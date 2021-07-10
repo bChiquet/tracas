@@ -2,13 +2,17 @@ module Main where
 
 import Prelude (Unit, pure, (#), bind, discard, unit)
 import Control.Monad ((>>=), void)
-import Data.Functor (map)
-import Data.String.Utils (words)
+import Control.Monad.Rec.Class (forever)
 import Effect (Effect)
 import Effect.Console (log)
+import Effect.Class (liftEffect)
+import Data.Functor (map)
+import Data.String.Utils (words)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Int as Int
+import Data.Either (Either(..))
+import Data.Number as Number
 import Data.Traversable (traverse)
+import Data.Time.Duration (Milliseconds(..))
 import Data.Monoid ((<>))
 
 import Web.DOM.NonElementParentNode (getElementById)
@@ -22,9 +26,12 @@ import Web.Event.EventTarget
 import Web.Event.Event (Event, EventType(..))
 
 import Effect.AVar as AVar
+import Effect.Aff (Aff, launchAff_, delay)
+import Affjax (post)
+import Affjax.ResponseFormat as Format
+--import Affjax.RequestBody as Body
 
 type Url = String
-type Milliseconds = Int
 type DataStore = AVar.AVar Datum 
 
 type Datum = Unit
@@ -63,9 +70,9 @@ buildConfig = do
   mbServer   <- getAttr "tracas-server" tracasNode 
   dataSet    <- getAttr "tracas-data-set" tracasNode
   hBeatEvery <- getAttr "tracas-heartbeat-millis" tracasNode
-              # map (\x -> x >>= Int.fromString)
+              # map (\x -> x >>= Number.fromString # map Milliseconds)
   phoneEvery <- getAttr "tracas-phonehome-millis" tracasNode
-              # map (\x -> x >>= Int.fromString)
+              # map (\x -> x >>= Number.fromString # map Milliseconds)
   events     <- getAttr "tracas-needed-events" tracasNode
               # map (map words)
 
@@ -73,10 +80,10 @@ buildConfig = do
     [Just appName, Just server] -> pure (Just 
       { appName          : appName
       , collectingServer : server
-      , dataSet          : dataSet     # withDefault "undefined"
-      , heartBeatEvery   : hBeatEvery # withDefault 200
-      , phoneHomeEvery   : phoneEvery # withDefault 5000
-      , recordedEvents   : events      # withDefault defaultEvts})
+      , dataSet          : dataSet    # withDefault "undefined"
+      , heartBeatEvery   : hBeatEvery # withDefault (Milliseconds 200.0)
+      , phoneHomeEvery   : phoneEvery # withDefault (Milliseconds 5000.0)
+      , recordedEvents   : events     # withDefault defaultEvts})
     _ -> pure Nothing
 
 onEvent :: DataStore -> Event -> Effect Unit
@@ -93,6 +100,23 @@ trackEvents config collector = do
   target <- window # map toEventTarget
   void (traverse (trackEvent target listener) config.recordedEvents)
 
+sendData :: Config -> Array Datum -> Aff Unit
+sendData config _ = do
+  result <- post Format.json config.collectingServer Nothing
+  case result of
+    Left _ -> liftEffect (log "oops")
+    Right _ -> pure unit
+
+packData :: DataStore -> Aff (Array Datum)
+packData _ = pure []
+
+handleEvents :: Config -> DataStore -> Effect Unit
+handleEvents config store = do
+  launchAff_ (forever ( do
+    packData store >>= sendData config 
+    delay config.phoneHomeEvery
+  ))
+
 main :: Effect Unit
 main = do
   mbConf <- buildConfig
@@ -102,5 +126,5 @@ main = do
        log ("Tracking " <> conf.appName) 
        dataStore <- AVar.empty
        trackEvents conf dataStore
---       handleEvents conf dataStore
+       handleEvents conf dataStore
 
