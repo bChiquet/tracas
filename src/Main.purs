@@ -14,6 +14,7 @@ import Data.Number as Number
 import Data.Traversable (traverse)
 import Data.Time.Duration (Milliseconds(..))
 import Data.Monoid ((<>))
+import Data.Argonaut.Encode (encodeJson)
 
 import Web.DOM.NonElementParentNode (getElementById)
 import Web.DOM.Internal.Types (Element)
@@ -29,16 +30,17 @@ import Effect.AVar as AVar
 import Effect.Aff (Aff, launchAff_, delay)
 import Affjax (post)
 import Affjax.ResponseFormat as Format
---import Affjax.RequestBody as Body
+import Affjax.RequestBody as Body
 
 type Url = String
 type DataStore = AVar.AVar Datum 
 
 type Datum = Unit
+type Report = Datum
 
 type Config =
   { appName :: String
-  , collectingServer :: Url
+  , server :: Url
   , dataSet :: String
   , heartBeatEvery :: Milliseconds
   , phoneHomeEvery :: Milliseconds
@@ -78,12 +80,12 @@ buildConfig = do
 
   case [mbAppName, mbServer] of
     [Just appName, Just server] -> pure (Just 
-      { appName          : appName
-      , collectingServer : server
-      , dataSet          : dataSet    # withDefault "undefined"
-      , heartBeatEvery   : hBeatEvery # withDefault (Milliseconds 200.0)
-      , phoneHomeEvery   : phoneEvery # withDefault (Milliseconds 5000.0)
-      , recordedEvents   : events     # withDefault defaultEvts})
+      { appName        : appName
+      , server         : server
+      , dataSet        : dataSet    # withDefault "undefined"
+      , heartBeatEvery : hBeatEvery # withDefault (Milliseconds 200.0)
+      , phoneHomeEvery : phoneEvery # withDefault (Milliseconds 5000.0)
+      , recordedEvents : events     # withDefault defaultEvts})
     _ -> pure Nothing
 
 onEvent :: DataStore -> Event -> Effect Unit
@@ -100,9 +102,9 @@ trackEvents config collector = do
   target <- window # map toEventTarget
   void (traverse (trackEvent target listener) config.recordedEvents)
 
-sendData :: Config -> Array Datum -> Aff Unit
-sendData config _ = do
-  result <- post Format.json config.collectingServer Nothing
+sendData :: Config -> Array Report -> Aff Unit
+sendData config data_ = do
+  result <- post Format.json config.server (encodeJson data_ # Body.json # Just)
   case result of
     Left _ -> liftEffect (log "oops")
     Right _ -> pure unit

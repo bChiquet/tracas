@@ -14,6 +14,7 @@ to generate this file without the comments in this block.
 , dependencies =
   [ "aff"
   , "affjax"
+  , "argonaut-codecs"
   , "avar"
   , "console"
   , "datetime"
