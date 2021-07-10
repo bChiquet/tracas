@@ -33,8 +33,8 @@ type Config =
   { appName :: String
   , collectingServer :: Url
   , dataSet :: String
-  , heartBeatFrequency :: Milliseconds
-  , phoneHomeFrequency :: Milliseconds
+  , heartBeatEvery :: Milliseconds
+  , phoneHomeEvery :: Milliseconds
   , recordedEvents :: Array String
   }
 
@@ -59,24 +59,24 @@ buildConfig = do
     #   map toNonElementParentNode 
     >>= getElementById "tracas-include-script"
 
-  mbAppName <- getAttr "tracas-app-name" tracasNode
-  mbServer  <- getAttr "tracas-server" tracasNode 
-  dataSet   <- getAttr "tracas-data-set" tracasNode
-  hBeatFreq <- getAttr "tracas-heartbeat-millis" tracasNode
-             # map (\x -> x >>= Int.fromString)
-  phoneFreq <- getAttr "tracas-phonehome-millis" tracasNode
-             # map (\x -> x >>= Int.fromString)
-  events    <- getAttr "tracas-needed-events" tracasNode
-             # map (map words)
+  mbAppName  <- getAttr "tracas-app-name" tracasNode
+  mbServer   <- getAttr "tracas-server" tracasNode 
+  dataSet    <- getAttr "tracas-data-set" tracasNode
+  hBeatEvery <- getAttr "tracas-heartbeat-millis" tracasNode
+              # map (\x -> x >>= Int.fromString)
+  phoneEvery <- getAttr "tracas-phonehome-millis" tracasNode
+              # map (\x -> x >>= Int.fromString)
+  events     <- getAttr "tracas-needed-events" tracasNode
+              # map (map words)
 
   case [mbAppName, mbServer] of
     [Just appName, Just server] -> pure (Just 
-      { appName            : appName
-      , collectingServer   : server
-      , dataSet            : dataSet   # withDefault "undefined"
-      , heartBeatFrequency : hBeatFreq # withDefault 200
-      , phoneHomeFrequency : phoneFreq # withDefault 5000
-      , recordedEvents     : events    # withDefault defaultEvts})
+      { appName          : appName
+      , collectingServer : server
+      , dataSet          : dataSet     # withDefault "undefined"
+      , heartBeatEvery   : hBeatEvery # withDefault 200
+      , phoneHomeEvery   : phoneEvery # withDefault 5000
+      , recordedEvents   : events      # withDefault defaultEvts})
     _ -> pure Nothing
 
 onEvent :: DataStore -> Event -> Effect Unit
