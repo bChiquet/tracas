@@ -12,14 +12,17 @@ to generate this file without the comments in this block.
 -}
 { name = "my-project"
 , dependencies =
-  [ "console"
+  [ "avar"
+  , "console"
   , "effect"
+  , "foldable-traversable"
   , "integers"
   , "maybe"
   , "prelude"
   , "psci-support"
   , "stringutils"
   , "web-dom"
+  , "web-events"
   , "web-html"
   ]
 , packages = ./packages.dhall
