@@ -22,6 +22,7 @@ to generate this file without the comments in this block.
   , "either"
   , "foldable-traversable"
   , "maybe"
+  , "monad-loops"
   , "numbers"
   , "prelude"
   , "psci-support"

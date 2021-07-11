@@ -3,6 +3,7 @@ module Main where
 import Prelude (Unit, pure, (#), bind, discard, unit)
 import Control.Monad ((>>=), void)
 import Control.Monad.Rec.Class (forever)
+import Control.Monad.Loops (whileJust)
 import Effect (Effect)
 import Effect.Console (log)
 import Effect.Class (liftEffect)
@@ -27,6 +28,7 @@ import Web.Event.EventTarget
 import Web.Event.Event (Event, EventType(..))
 
 import Effect.AVar as AVar
+import Effect.Aff.AVar as AffV
 import Effect.Aff (Aff, launchAff_, delay)
 import Affjax (post)
 import Affjax.ResponseFormat as Format
@@ -110,7 +112,8 @@ sendData config data_ = do
     Right _ -> pure unit
 
 packData :: DataStore -> Aff (Array Datum)
-packData _ = pure []
+packData store = 
+  whileJust (AffV.tryTake store) pure
 
 handleEvents :: Config -> DataStore -> Effect Unit
 handleEvents config store = do
