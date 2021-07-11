@@ -1,0 +1,25 @@
+name:                server
+version:             0.1.0.0
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+  - servant
+  - servant-server
+  - aeson
+
+executables:
+  server-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - server
+    - warp
+    - wai-extra
