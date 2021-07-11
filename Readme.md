@@ -14,5 +14,9 @@ Track web users in a reasonable fashion
 
 Using nix:
 * `nix-shell -p purescript -p spago -p pscid`
-
 [using nix with purescript](https://www.srid.ca/purescript-nix)
+
+Inside nix shell:
+
+* build: `spago build` or `pscid`
+* bundle: `spago bundle-app --to="example/tracas.js"`
