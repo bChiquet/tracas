@@ -30,7 +30,7 @@ import Web.Event.Event (Event, EventType(..))
 import Effect.AVar as AVar
 import Effect.Aff.AVar as AffV
 import Effect.Aff (Aff, launchAff_, delay)
-import Affjax (post)
+import Affjax (post, printError)
 import Affjax.ResponseFormat as Format
 import Affjax.RequestBody as Body
 
@@ -108,7 +108,7 @@ sendData :: Config -> Array Report -> Aff Unit
 sendData config data_ = do
   result <- post Format.json config.server (encodeJson data_ # Body.json # Just)
   case result of
-    Left _ -> liftEffect (log "oops")
+    Left error -> liftEffect (log (printError error))
     Right _ -> pure unit
 
 packData :: DataStore -> Aff (Array Datum)
