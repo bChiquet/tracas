@@ -1,21 +1,27 @@
 module Main where
 
-import Prelude (Unit, pure, (#), bind, discard, unit)
+import Prelude (Unit, pure, (#), bind, discard, unit, show)
 import Control.Monad ((>>=), void)
 import Control.Monad.Rec.Class (forever)
 import Control.Monad.Loops (whileJust)
 import Effect (Effect)
 import Effect.Console (log)
 import Effect.Class (liftEffect)
+import Effect.Random (randomInt)
 import Data.Functor (map)
 import Data.String.Utils (words)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Either (Either(..))
 import Data.Number as Number
+import Data.Int (floor)
 import Data.Traversable (traverse)
 import Data.Time.Duration (Milliseconds(..))
+import Data.DateTime.Instant (unInstant)
 import Data.Monoid ((<>))
 import Data.Argonaut.Encode (encodeJson)
+import Browser.Cookie (getCookie, setCookie)
+import Browser.Cookies.Data (Cookie(..), SetCookie(..))
+import Effect.Now (now)
 
 import Web.DOM.NonElementParentNode (getElementById)
 import Web.DOM.Internal.Types (Element)
@@ -35,6 +41,7 @@ import Affjax.ResponseFormat as Format
 import Affjax.RequestBody as Body
 
 type Url = String
+type Identifier = String
 type DataStore = AVar.AVar Datum 
 
 type Datum = Unit
@@ -43,6 +50,8 @@ type Report = Datum
 type Config =
   { appName :: String
   , server :: Url
+  , session :: Identifier
+  , cookie :: Identifier
   , dataSet :: String
   , heartBeatEvery :: Milliseconds
   , phoneHomeEvery :: Milliseconds
@@ -62,6 +71,13 @@ getAttr attr mbNode = case mbNode of
 withDefault :: forall a. a -> Maybe a -> a
 withDefault = fromMaybe
 
+makeIdentifier :: Effect String
+makeIdentifier = do
+  (Milliseconds posix) <- now # map unInstant
+  randomValue <- randomInt 0 10000000
+  pure (show (floor posix) <> show randomValue)
+
+
 buildConfig :: Effect (Maybe Config)
 buildConfig = do
   tracasNode <-
@@ -80,10 +96,23 @@ buildConfig = do
   events     <- getAttr "tracas-needed-events" tracasNode
               # map (map words)
 
+  session <- makeIdentifier
+  mbCookie  <- getCookie "tracas-cookie"
+  cookieValue <- case mbCookie of
+    Just (Cookie content) ->
+      pure content.value
+    Nothing     -> do
+      setCookie (SetCookie 
+                  {cookie: (Cookie {key: "tracas-cookie", value: session})
+                  , opts: Nothing})
+      pure session
+
   case [mbAppName, mbServer] of
     [Just appName, Just server] -> pure (Just 
       { appName        : appName
       , server         : server
+      , session        : session 
+      , cookie         : cookieValue
       , dataSet        : dataSet    # withDefault "undefined"
       , heartBeatEvery : hBeatEvery # withDefault (Milliseconds 200.0)
       , phoneHomeEvery : phoneEvery # withDefault (Milliseconds 5000.0)
