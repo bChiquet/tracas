@@ -37,7 +37,7 @@ import Web.HTML.Window (document, toEventTarget)
 import Web.HTML.HTMLDocument (toNonElementParentNode)
 import Web.Event.EventTarget
   (EventTarget, EventListener, addEventListener, eventListener)
-import Web.Event.Event (Event, EventType(..))
+import Web.Event.Event (Event, EventType(..), type_)
 
 import Effect.AVar as AVar
 import Effect.Aff.AVar as AffV
@@ -50,8 +50,16 @@ type Url = String
 type Identifier = String
 type DataStore = AVar.AVar Datum 
 
-type Datum = Unit
+type Datum = Recording
 type Report = Datum
+
+type Recording =
+  { eventType :: String
+  , session :: Identifier
+  , cookie :: Identifier
+  , dataSet :: String
+  , appName :: String
+  }
 
 type Config =
   { appName :: String
@@ -160,9 +168,17 @@ buildConfig = do
       , recordedEvents : events     # withDefault defaultEvts})
     _ -> pure Nothing
 
-onEvent :: DataStore -> Event -> Effect Unit
-onEvent collector _event =
-  void (AVar.put unit collector (\_ -> pure unit))
+onEvent :: Config -> DataStore -> Event -> Effect Unit
+onEvent config collector event =
+  let (EventType eventType) = type_ event
+      record =
+        { eventType : eventType
+        , session   : config.session
+        , cookie    : config.cookie
+        , dataSet   : config.dataSet
+        , appName   : config.appName
+        }
+  in void (AVar.put record collector (\_ -> pure unit))
 
 trackEvent :: EventTarget -> EventListener -> String -> Effect Unit
 trackEvent target listener eventName =
@@ -170,7 +186,7 @@ trackEvent target listener eventName =
 
 trackEvents :: Config -> DataStore -> Effect Unit
 trackEvents config collector = do
-  listener <- eventListener (onEvent collector)
+  listener <- eventListener (onEvent config collector)
   target <- window # map toEventTarget
   void (traverse (trackEvent target listener) config.recordedEvents)
 
