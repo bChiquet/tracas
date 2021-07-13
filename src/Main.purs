@@ -11,7 +11,7 @@ import Effect.Random (randomInt)
 import Data.Functor (map)
 import Data.Array ((:), length)
 import Data.String.Utils (words)
-import Data.String.CodeUnits (charAt, fromCharArray)
+import Data.String.CodeUnits (charAt, fromCharArray, take)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Either (Either(..))
 import Data.Number as Number
@@ -31,13 +31,14 @@ import Data.Unfoldable (replicateA)
 
 import Web.DOM.NonElementParentNode (getElementById)
 import Web.DOM.Internal.Types (Element)
-import Web.DOM.Element (getAttribute)
+import Web.DOM.Element (getAttribute, tagName, className, id, toNode, fromNode)
+import Web.DOM.Node (textContent, fromEventTarget)
 import Web.HTML (window)
 import Web.HTML.Window (document, toEventTarget)
 import Web.HTML.HTMLDocument (toNonElementParentNode)
 import Web.Event.EventTarget
   (EventTarget, EventListener, addEventListener, eventListener)
-import Web.Event.Event (Event, EventType(..), type_)
+import Web.Event.Event (Event, EventType(..), type_, target)
 
 import Effect.AVar as AVar
 import Effect.Aff.AVar as AffV
@@ -55,11 +56,15 @@ type Report = Datum
 
 type Recording =
   { eventType :: String
-  , session :: Identifier
-  , cookie :: Identifier
-  , dataSet :: String
-  , appName :: String
+  , session   :: Identifier
+  , cookie    :: Identifier
+  , dataSet   :: String
+  , appName   :: String
+  , timestamp :: Number
+  , scrapInfo :: String
   }
+
+type Tag = { key :: String, value :: String }
 
 type Config =
   { appName :: String
@@ -168,17 +173,30 @@ buildConfig = do
       , recordedEvents : events     # withDefault defaultEvts})
     _ -> pure Nothing
 
+genericNodeInfos :: Element -> Effect String
+genericNodeInfos element = do
+  let tag_ = tagName element
+  id_ <- id element
+  class_ <- className element
+  content <- toNode element # textContent # map (take 20)
+  pure (tag_ <>"_"<> id_ <>"_"<> class_ <>"_"<> content )
+
 onEvent :: Config -> DataStore -> Event -> Effect Unit
-onEvent config collector event =
+onEvent config collector event = do
   let (EventType eventType) = type_ event
-      record =
+  let element = target event >>= fromEventTarget >>= fromNode 
+  genericInfos <- map genericNodeInfos element # withDefault (pure "no info")
+  (Milliseconds timestamp) <- now # map unInstant 
+  let record =
         { eventType : eventType
         , session   : config.session
         , cookie    : config.cookie
         , dataSet   : config.dataSet
         , appName   : config.appName
+        , timestamp : timestamp 
+        , scrapInfo : genericInfos
         }
-  in void (AVar.put record collector (\_ -> pure unit))
+  void (AVar.put record collector (\_ -> pure unit))
 
 trackEvent :: EventTarget -> EventListener -> String -> Effect Unit
 trackEvent target listener eventName =
