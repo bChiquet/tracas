@@ -36,6 +36,7 @@ to generate this file without the comments in this block.
   , "stringutils"
   , "tailrec"
   , "unfoldable"
+  , "unordered-collections"
   , "web-dom"
   , "web-events"
   , "web-html"

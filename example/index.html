@@ -7,13 +7,38 @@
 </head>
 
 <body>
-    <div>some text here</div>
-    <button>click me</button>
-    <script async
-      type="text/javascript"
-      id="tracas-include-script" 
-      tracas-app-name="example-app"
-      tracas-server="http://localhost:9000/reports"
-      src="tracas.js"
-    ></script>
+  <div>some text here</div>
+  <button>click me!</button>
+  <br/>
+  <div tracas-tag="this div is tagged">
+    You can add tags to enrich the info you collect: <br/>
+    &ltdiv tracas-tag="here is some data"&gt ... &lt/div&gt
+  </div>
+  <button tracas-tag="this button is tagged">This button has tagged data</button>
+  <br/>
+  <div tracas-tag="kv-syntax=active;infos=this div is tagged">
+    The tags can have key-value data using the following syntax:<br/>
+    &ltdiv tracas-tag="key1=value1;key2=value2"&gt ... &lt/div&gt
+  </div>
+  <button tracas-tag="kv-syntax=active;infos=this button is tagged">
+    This button has keyworded tag data
+  </button>
+  <br/>
+  <div tracas-tag="parent=parent data;child=null;button=null">
+    <div tracas-tag="child=child data">
+      When multiple levels in a dom tree have tags, both are picked up.
+      However, if they share the same tag key, child data has priority.
+    </div>
+    <button tracas-tag="button=button data">
+      Clicking this button returns button tags as well as tags from its parent.
+    </button>
+  </div>
+  <script async
+    type="text/javascript"
+    id="tracas-include-script" 
+    tracas-app-name="example-app"
+    tracas-server="http://localhost:9000/reports"
+    tracas-needed-events="click dragstart dragend"
+    src="tracas.js"
+  ></script>
 </body>

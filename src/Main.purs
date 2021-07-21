@@ -10,6 +10,9 @@ import Effect.Class (liftEffect)
 import Effect.Random (randomInt)
 import Data.Functor (map)
 import Data.Array ((:), length)
+import Data.HashMap (HashMap)
+import Data.HashMap as HashMap
+import Data.String (split, Pattern(..))
 import Data.String.Utils (words)
 import Data.String.CodeUnits (charAt, fromCharArray, take)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -19,6 +22,7 @@ import Data.Int as Int
 import Math (floor)
 import Data.EuclideanRing (div)
 import Data.Traversable (traverse)
+import Data.Foldable (foldl)
 import Data.Time.Duration (Milliseconds(..))
 import Data.DateTime.Instant (unInstant)
 import Data.Monoid ((<>))
@@ -32,7 +36,7 @@ import Data.Unfoldable (replicateA)
 import Web.DOM.NonElementParentNode (getElementById)
 import Web.DOM.Internal.Types (Element)
 import Web.DOM.Element (getAttribute, tagName, className, id, toNode, fromNode)
-import Web.DOM.Node (textContent, fromEventTarget)
+import Web.DOM.Node (textContent, fromEventTarget, parentNode)
 import Web.HTML (window)
 import Web.HTML.Window (document, toEventTarget)
 import Web.HTML.HTMLDocument (toNonElementParentNode)
@@ -187,15 +191,62 @@ genericNodeInfos element = do
   content <- toNode element # textContent # map (take 20)
   pure (tag_ <>"_"<> id_ <>"_"<> class_ <>"_"<> content )
 
-taggedNodeInfos :: Element -> Effect (Array Tag)
-taggedNodeInfos _ = pure []
+-- | toTags transforms a parsed string into a tags hashmap.
+-- | Tags can follow a key-value syntax :
+-- | <div tracas-tag="key1=value1;key2=value2"> 
+-- | If so, we return a hashmap containing the list of key/values.
+-- | If a key is present more than once, only the last one is returned.
+-- | Separator and associator (';' and '=' by default) can be configured.
+-- |
+-- | If tags can not be parsed using kv syntax, we send the raw string if any.
+toTags :: Config -> Maybe String -> HashMap String String
+toTags config tagData = 
+  case tagData of
+    Nothing -> HashMap.empty -- no tag was found
+    Just tagString ->
+      let tagKVs =
+            split (Pattern config.separator) tagString
+              # map (split (Pattern config.associator))
+              # foldl
+                  (\mhm list -> case list of
+                     -- If we find exactly two values, we build a key-value map
+                     [key, value] -> map (\hm -> HashMap.insert key value hm) mhm 
+                     -- Otherwise, we revert to simple tags mode
+                     _ -> Nothing)
+                  (Just HashMap.empty)
+      in case tagKVs of 
+         Nothing -> HashMap.singleton config.tagName tagString -- simple tag mode
+         Just keyValueMap -> keyValueMap --kv tag mode
+
+-- | taggedNodeInfos returns tag infos in the dom.
+-- | Tags can be added using html attribute syntax :
+-- | <div tracas-tag="data relevant to us"> 
+-- | The tag attribute key ("tracas-tag" by default) can be configured.
+-- | 
+-- | taggedNodeInfos parses tags recursively from an element to the doc root.
+-- | If using kv-tag syntax (see toTags doc): 
+-- |  - keys in parent nodes are shadowed by identical keys in child nodes.
+taggedNodeInfos
+  :: Config -> HashMap String String -> Element
+  -> Effect (HashMap String String)
+taggedNodeInfos config tags element = do
+  mbTagInfo <- getAttribute config.tagName element
+  mbParent <- parentNode (toNode element)
+  let newTags = toTags config mbTagInfo
+  let updatedTags = HashMap.union tags newTags
+  case mbParent >>= fromNode of
+    Nothing     -> pure updatedTags
+    Just parent -> taggedNodeInfos config updatedTags parent
 
 onEvent :: Config -> DataStore -> Event -> Effect Unit
 onEvent config collector event = do
   let (EventType eventType) = type_ event
   let element = target event >>= fromEventTarget >>= fromNode 
   genericInfos <- map genericNodeInfos element # withDefault (pure "no info")
-  taggedInfos <- map taggedNodeInfos element # withDefault (pure [])
+  taggedInfos <-
+    map (taggedNodeInfos config HashMap.empty) element
+    # withDefault (pure HashMap.empty)
+    # map (HashMap.toArrayBy (\k v -> {key: k, value: v}))
   (Milliseconds timestamp) <- now # map unInstant 
   let record =
         { eventType : eventType
