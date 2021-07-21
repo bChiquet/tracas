@@ -73,6 +73,9 @@ type Config =
   , session :: Identifier
   , cookie :: Identifier
   , dataSet :: String
+  , tagName :: String
+  , separator :: String
+  , associator :: String
   , phoneHomeEvery :: Milliseconds
   , recordedEvents :: Array String
   }
@@ -151,6 +154,9 @@ buildConfig = do
   mbAppName  <- getAttr "tracas-app-name" tracasNode
   mbServer   <- getAttr "tracas-server" tracasNode 
   dataSet    <- getAttr "tracas-data-set" tracasNode
+  tagName    <- getAttr "tracas-tag-name" tracasNode
+  separator  <- getAttr "tracas-separator-token" tracasNode
+  associator <- getAttr "tracas-association-token" tracasNode
   phoneEvery <- getAttr "tracas-phonehome-millis" tracasNode
               # map (\x -> x >>= Number.fromString # map Milliseconds)
   events     <- getAttr "tracas-needed-events" tracasNode
@@ -165,6 +171,9 @@ buildConfig = do
       , server         : server
       , session        : session 
       , cookie         : cookie
+      , tagName        : tagName    # withDefault "tracas-tag"
+      , separator      : separator  # withDefault ";"
+      , associator     : associator # withDefault "="
       , dataSet        : dataSet    # withDefault "undefined"
       , phoneHomeEvery : phoneEvery # withDefault (Milliseconds 5000.0)
       , recordedEvents : events     # withDefault defaultEvts})
