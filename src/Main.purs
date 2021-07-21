@@ -72,7 +72,6 @@ type Config =
   , session :: Identifier
   , cookie :: Identifier
   , dataSet :: String
-  , heartBeatEvery :: Milliseconds
   , phoneHomeEvery :: Milliseconds
   , recordedEvents :: Array String
   }
@@ -151,8 +150,6 @@ buildConfig = do
   mbAppName  <- getAttr "tracas-app-name" tracasNode
   mbServer   <- getAttr "tracas-server" tracasNode 
   dataSet    <- getAttr "tracas-data-set" tracasNode
-  hBeatEvery <- getAttr "tracas-heartbeat-millis" tracasNode
-              # map (\x -> x >>= Number.fromString # map Milliseconds)
   phoneEvery <- getAttr "tracas-phonehome-millis" tracasNode
               # map (\x -> x >>= Number.fromString # map Milliseconds)
   events     <- getAttr "tracas-needed-events" tracasNode
@@ -168,7 +165,6 @@ buildConfig = do
       , session        : session 
       , cookie         : cookie
       , dataSet        : dataSet    # withDefault "undefined"
-      , heartBeatEvery : hBeatEvery # withDefault (Milliseconds 200.0)
       , phoneHomeEvery : phoneEvery # withDefault (Milliseconds 5000.0)
       , recordedEvents : events     # withDefault defaultEvts})
     _ -> pure Nothing
