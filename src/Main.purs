@@ -62,6 +62,7 @@ type Recording =
   , appName   :: String
   , timestamp :: Number
   , scrapInfo :: String
+  , tags      :: Array Tag
   }
 
 type Tag = { key :: String, value :: String }
@@ -177,11 +178,15 @@ genericNodeInfos element = do
   content <- toNode element # textContent # map (take 20)
   pure (tag_ <>"_"<> id_ <>"_"<> class_ <>"_"<> content )
 
+taggedNodeInfos :: Element -> Effect (Array Tag)
+taggedNodeInfos _ = pure []
+
 onEvent :: Config -> DataStore -> Event -> Effect Unit
 onEvent config collector event = do
   let (EventType eventType) = type_ event
   let element = target event >>= fromEventTarget >>= fromNode 
   genericInfos <- map genericNodeInfos element # withDefault (pure "no info")
+  taggedInfos <- map taggedNodeInfos element # withDefault (pure [])
   (Milliseconds timestamp) <- now # map unInstant 
   let record =
         { eventType : eventType
@@ -191,6 +196,7 @@ onEvent config collector event = do
         , appName   : config.appName
         , timestamp : timestamp 
         , scrapInfo : genericInfos
+        , tags      : taggedInfos
         }
   void (AVar.put record collector (\_ -> pure unit))
 
