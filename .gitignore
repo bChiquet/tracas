@@ -13,3 +13,6 @@
 # generated js
 index.js
 example/tracas.js
+
+# vim swap files
+**/\.*\.swp
