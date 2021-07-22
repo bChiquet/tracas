@@ -155,15 +155,15 @@ buildConfig = do
     #   map toNonElementParentNode 
     >>= getElementById "tracas-include-script"
 
-  mbAppName  <- getAttr "tracas-app-name" tracasNode
-  mbServer   <- getAttr "tracas-server" tracasNode 
-  dataSet    <- getAttr "tracas-data-set" tracasNode
-  tagName    <- getAttr "tracas-tag-name" tracasNode
-  separator  <- getAttr "tracas-separator-token" tracasNode
-  associator <- getAttr "tracas-association-token" tracasNode
-  phoneEvery <- getAttr "tracas-phonehome-millis" tracasNode
+  mbAppName  <- getAttr "app-name" tracasNode
+  mbServer   <- getAttr "server" tracasNode 
+  dataSet    <- getAttr "data-set" tracasNode
+  tagName    <- getAttr "tag-name" tracasNode
+  separator  <- getAttr "separator-token" tracasNode
+  associator <- getAttr "association-token" tracasNode
+  phoneEvery <- getAttr "phonehome-millis" tracasNode
               # map (\x -> x >>= Number.fromString # map Milliseconds)
-  events     <- getAttr "tracas-needed-events" tracasNode
+  events     <- getAttr "needed-events" tracasNode
               # map (map words)
 
   session <- makeIdentifier
